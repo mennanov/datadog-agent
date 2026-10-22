@@ -212,6 +212,10 @@ func (p *streamingProvider) handleDCAStreamUpdate(update streamUpdate, seenPods 
 		events = append(events, p.buildKueueWorkloadEvents(update.updatedKueueWorkloads)...)
 	}
 
+	if len(update.updatedAutoscalers) > 0 {
+		events = append(events, p.buildAutoscalerEvents(update.updatedAutoscalers)...)
+	}
+
 	if update.updateIsFullState {
 		for _, uid := range seenPods {
 			if podEvent, ok := p.buildPodEventFromUID(uid); ok {
@@ -450,6 +454,33 @@ func (p *streamingProvider) buildKueueWorkloadEvents(updatedWorkloadIDs map[stri
 	return events
 }
 
+func (p *streamingProvider) buildAutoscalerEvents(updatedAutoscalerIDs map[string]struct{}) []workloadmeta.CollectorEvent {
+	events := make([]workloadmeta.CollectorEvent, 0, len(updatedAutoscalerIDs))
+	for autoscalerID := range updatedAutoscalerIDs {
+		autoscaler, found := p.dcaStream.getAutoscaler(autoscalerID)
+		if found {
+			events = append(events, workloadmeta.CollectorEvent{
+				Source: workloadmeta.SourceClusterOrchestrator,
+				Type:   workloadmeta.EventTypeSet,
+				Entity: autoscaler,
+			})
+			continue
+		}
+
+		events = append(events, workloadmeta.CollectorEvent{
+			Source: workloadmeta.SourceClusterOrchestrator,
+			Type:   workloadmeta.EventTypeUnset,
+			Entity: &workloadmeta.KubernetesAutoscaler{
+				EntityID: workloadmeta.EntityID{
+					Kind: workloadmeta.KindKubernetesAutoscaler,
+					ID:   autoscalerID,
+				},
+			},
+		})
+	}
+	return events
+}
+
 type streamUpdate struct {
 	updateIsFullState           bool
 	updatedPods                 map[string]struct{} // keys are "namespace/name"
@@ -457,6 +488,7 @@ type streamUpdate struct {
 	updatedKueueQueues          map[string]struct{} // keys are workloadmeta entity IDs
 	updatedKueueResourceFlavors map[string]struct{} // keys are workloadmeta entity IDs
 	updatedKueueWorkloads       map[string]struct{} // keys are workloadmeta entity IDs
+	updatedAutoscalers          map[string]struct{} // keys are workloadmeta entity IDs
 }
 
 // dcaStreamClient manages a gRPC streaming connection to the DCA for
@@ -471,6 +503,7 @@ type dcaStreamClient struct {
 	kueueQueues          map[string]*workloadmeta.KubernetesKueueQueue
 	kueueResourceFlavors map[string]*workloadmeta.KubernetesKueueResourceFlavor
 	kueueWorkloads       map[string]*workloadmeta.KubernetesKueueWorkload
+	autoscalers          map[string]*workloadmeta.KubernetesAutoscaler
 	initialized          bool
 	unimplemented        bool
 	pendingUpdate        streamUpdate
@@ -492,6 +525,7 @@ func newDCAStreamClient(nodeName string, cfg configmodel.Reader) *dcaStreamClien
 		kueueQueues:          make(map[string]*workloadmeta.KubernetesKueueQueue),
 		kueueResourceFlavors: make(map[string]*workloadmeta.KubernetesKueueResourceFlavor),
 		kueueWorkloads:       make(map[string]*workloadmeta.KubernetesKueueWorkload),
+		autoscalers:          make(map[string]*workloadmeta.KubernetesAutoscaler),
 		readyCh:              make(chan struct{}),
 		updateCh:             make(chan struct{}, 1),
 	}
@@ -597,6 +631,19 @@ func (sc *dcaStreamClient) getKueueWorkload(workloadID string) (*workloadmeta.Ku
 	// workload is passed to workloadmeta after sc.mu is released, and it contains
 	// mutable maps such as Labels, Annotations, and PodSetAssignment flavors.
 	return workload.DeepCopy().(*workloadmeta.KubernetesKueueWorkload), true
+}
+
+func (sc *dcaStreamClient) getAutoscaler(autoscalerID string) (*workloadmeta.KubernetesAutoscaler, bool) {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	autoscaler, found := sc.autoscalers[autoscalerID]
+	if !found {
+		return nil, false
+	}
+	// Keep ownership of the cached entity with the stream client. The returned
+	// autoscaler is passed to workloadmeta after sc.mu is released.
+	return autoscaler.DeepCopy().(*workloadmeta.KubernetesAutoscaler), true
 }
 
 func (sc *dcaStreamClient) isUnimplemented() bool {
@@ -773,17 +820,39 @@ func (sc *dcaStreamClient) applyResponse(resp *pb.KubeMetadataStreamResponse) {
 		}
 		sc.kueueWorkloads = newKueueWorkloads
 
+		// Merge into the pending set instead of replacing it. Otherwise, an
+		// incremental unset received before this full state and not drained
+		// yet would be lost, because the entity is no longer in the cache.
+		updatedAutoscalers := sc.pendingUpdate.updatedAutoscalers
+		if updatedAutoscalers == nil {
+			updatedAutoscalers = make(map[string]struct{}, len(resp.KubernetesAutoscalers)+len(sc.autoscalers))
+		}
+		for autoscalerID := range sc.autoscalers {
+			updatedAutoscalers[autoscalerID] = struct{}{}
+		}
+		newAutoscalers := make(map[string]*workloadmeta.KubernetesAutoscaler, len(resp.KubernetesAutoscalers))
+		for _, autoscalerMetadata := range resp.KubernetesAutoscalers {
+			autoscaler := newKubernetesAutoscaler(autoscalerMetadata)
+			if autoscaler == nil {
+				continue
+			}
+			newAutoscalers[autoscaler.EntityID.ID] = autoscaler
+			updatedAutoscalers[autoscaler.EntityID.ID] = struct{}{}
+		}
+		sc.autoscalers = newAutoscalers
+
 		sc.initialized = true
 		sc.pendingUpdate.updateIsFullState = true
 		sc.pendingUpdate.updatedKueueQueues = updatedKueueQueues
 		sc.pendingUpdate.updatedKueueResourceFlavors = updatedKueueResourceFlavors
 		sc.pendingUpdate.updatedKueueWorkloads = updatedKueueWorkloads
+		sc.pendingUpdate.updatedAutoscalers = updatedAutoscalers
 		sc.notifyUpdate()
 		sc.signalReady()
 		return
 	}
 
-	if !sc.initialized && (len(resp.Mappings) > 0 || len(resp.NamespaceMetadata) > 0 || len(resp.KueueQueues) > 0 || len(resp.KueueResourceFlavors) > 0 || len(resp.KueueWorkloads) > 0) {
+	if !sc.initialized && (len(resp.Mappings) > 0 || len(resp.NamespaceMetadata) > 0 || len(resp.KueueQueues) > 0 || len(resp.KueueResourceFlavors) > 0 || len(resp.KueueWorkloads) > 0 || len(resp.KubernetesAutoscalers) > 0) {
 		log.Errorf("Received incremental kube metadata update before full state, ignoring")
 		return
 	}
@@ -890,7 +959,28 @@ func (sc *dcaStreamClient) applyResponse(resp *pb.KubeMetadataStreamResponse) {
 		sc.pendingUpdate.updatedKueueWorkloads[workloadID] = struct{}{}
 	}
 
-	if len(resp.Mappings) > 0 || len(resp.NamespaceMetadata) > 0 || len(resp.KueueQueues) > 0 || len(resp.KueueResourceFlavors) > 0 || len(resp.KueueWorkloads) > 0 {
+	for _, autoscalerMetadata := range resp.KubernetesAutoscalers {
+		autoscalerID := kubernetesAutoscalerID(autoscalerMetadata)
+		switch autoscalerMetadata.Type {
+		case pb.KubeMetadataEventType_SET:
+			autoscaler := newKubernetesAutoscaler(autoscalerMetadata)
+			if autoscaler == nil {
+				continue
+			}
+			sc.autoscalers[autoscalerID] = autoscaler
+		case pb.KubeMetadataEventType_UNSET:
+			delete(sc.autoscalers, autoscalerID)
+		default:
+			log.Errorf("Unknown event type %d for autoscaler %s", autoscalerMetadata.Type, autoscalerID)
+			continue
+		}
+		if sc.pendingUpdate.updatedAutoscalers == nil {
+			sc.pendingUpdate.updatedAutoscalers = make(map[string]struct{})
+		}
+		sc.pendingUpdate.updatedAutoscalers[autoscalerID] = struct{}{}
+	}
+
+	if len(resp.Mappings) > 0 || len(resp.NamespaceMetadata) > 0 || len(resp.KueueQueues) > 0 || len(resp.KueueResourceFlavors) > 0 || len(resp.KueueWorkloads) > 0 || len(resp.KubernetesAutoscalers) > 0 {
 		sc.notifyUpdate()
 	}
 }
@@ -1009,6 +1099,31 @@ func kueueWorkloadID(workloadMetadata *pb.KueueWorkload) string {
 	}
 
 	return workloadmeta.GenerateKueueWorkloadEntityID(workloadMetadata.Namespace, workloadMetadata.Name)
+}
+
+func newKubernetesAutoscaler(autoscalerMetadata *pb.KubernetesAutoscaler) *workloadmeta.KubernetesAutoscaler {
+	if autoscalerMetadata == nil || autoscalerMetadata.Name == "" || autoscalerMetadata.Namespace == "" || autoscalerMetadata.AutoscalerKind == "" {
+		return nil
+	}
+
+	return &workloadmeta.KubernetesAutoscaler{
+		EntityID: workloadmeta.GenerateKubernetesAutoscalerEntityID(workloadmeta.AutoscalerKind(autoscalerMetadata.AutoscalerKind), autoscalerMetadata.Namespace, autoscalerMetadata.Name),
+		EntityMeta: workloadmeta.EntityMeta{
+			Name:      autoscalerMetadata.Name,
+			Namespace: autoscalerMetadata.Namespace,
+		},
+		AutoscalerKind: workloadmeta.AutoscalerKind(autoscalerMetadata.AutoscalerKind),
+		TargetKind:     workloadmeta.AutoscalerTargetKind(autoscalerMetadata.TargetKind),
+		TargetName:     autoscalerMetadata.TargetName,
+	}
+}
+
+func kubernetesAutoscalerID(autoscalerMetadata *pb.KubernetesAutoscaler) string {
+	if autoscalerMetadata == nil {
+		return ""
+	}
+
+	return workloadmeta.GenerateKubernetesAutoscalerEntityID(workloadmeta.AutoscalerKind(autoscalerMetadata.AutoscalerKind), autoscalerMetadata.Namespace, autoscalerMetadata.Name).ID
 }
 
 // notifyUpdate sends signal on updateCh. Must be called with sc.mu held.

@@ -1476,6 +1476,58 @@ func TestDCAStreamClient_ApplyResponse_IncrementalWorkloadBeforeFullStateIgnored
 	assert.Empty(t, update.updatedKueueWorkloads)
 }
 
+func TestDCAStreamClient_ApplyResponse_Autoscalers(t *testing.T) {
+	sc := newDCAStreamClient("node-a", nil)
+
+	// Full state seeds the cache
+	sc.applyResponse(&pb.KubeMetadataStreamResponse{
+		IsFullState:           true,
+		KubernetesAutoscalers: []*pb.KubernetesAutoscaler{newPbAutoscaler("hpa-a", "app-a", pb.KubeMetadataEventType_SET)},
+	})
+	update := sc.drainPendingUpdate()
+	assert.True(t, update.updateIsFullState)
+	assert.Equal(t, map[string]struct{}{"hpa/default/hpa-a": {}}, update.updatedAutoscalers)
+	assert.Equal(t, &workloadmeta.KubernetesAutoscaler{
+		EntityID: workloadmeta.EntityID{
+			Kind: workloadmeta.KindKubernetesAutoscaler,
+			ID:   "hpa/default/hpa-a",
+		},
+		EntityMeta: workloadmeta.EntityMeta{
+			Name:      "hpa-a",
+			Namespace: "default",
+		},
+		AutoscalerKind: workloadmeta.AutoscalerKindHPA,
+		TargetKind:     workloadmeta.AutoscalerTargetDeployment,
+		TargetName:     "app-a",
+	}, sc.autoscalers["hpa/default/hpa-a"])
+
+	// Incremental SET
+	sc.applyResponse(&pb.KubeMetadataStreamResponse{
+		IsFullState:           false,
+		KubernetesAutoscalers: []*pb.KubernetesAutoscaler{newPbAutoscaler("hpa-b", "app-b", pb.KubeMetadataEventType_SET)},
+	})
+	update = sc.drainPendingUpdate()
+	assert.False(t, update.updateIsFullState)
+	assert.Equal(t, map[string]struct{}{"hpa/default/hpa-b": {}}, update.updatedAutoscalers)
+	assert.Contains(t, sc.autoscalers, "hpa/default/hpa-a")
+	assert.Contains(t, sc.autoscalers, "hpa/default/hpa-b")
+
+	// Incremental UNSET removes it from the cache but still reports it as updated
+	sc.applyResponse(&pb.KubeMetadataStreamResponse{
+		KubernetesAutoscalers: []*pb.KubernetesAutoscaler{newPbAutoscaler("hpa-b", "app-b", pb.KubeMetadataEventType_UNSET)},
+	})
+	update = sc.drainPendingUpdate()
+	assert.Equal(t, map[string]struct{}{"hpa/default/hpa-b": {}}, update.updatedAutoscalers)
+	assert.NotContains(t, sc.autoscalers, "hpa/default/hpa-b")
+
+	// A full state replaces the cache. An autoscaler missing from it is reported
+	// as updated, so that the collector unsets it.
+	sc.applyResponse(&pb.KubeMetadataStreamResponse{IsFullState: true})
+	update = sc.drainPendingUpdate()
+	assert.Equal(t, map[string]struct{}{"hpa/default/hpa-a": {}}, update.updatedAutoscalers)
+	assert.Empty(t, sc.autoscalers)
+}
+
 func assertKueueQueues(t *testing.T, wmetaMock workloadmetamock.Mock, expected map[string]expectedKueueQueue) {
 	t.Helper()
 
@@ -1568,5 +1620,16 @@ func makePodUnsetEvent(uid string) workloadmeta.Event {
 				ID:   uid,
 			},
 		},
+	}
+}
+
+func newPbAutoscaler(name, targetName string, eventType pb.KubeMetadataEventType) *pb.KubernetesAutoscaler {
+	return &pb.KubernetesAutoscaler{
+		Namespace:      "default",
+		Name:           name,
+		AutoscalerKind: "hpa",
+		TargetKind:     "deployment",
+		TargetName:     targetName,
+		Type:           eventType,
 	}
 }
