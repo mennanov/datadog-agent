@@ -326,6 +326,59 @@ func (m *macosInstallSuite) TestInstallAgent() {
 	assert.Empty(m.T(), strings.TrimSpace(worldWritableFiles))
 }
 
+// TestLaunchDaemonsInstalledByInstaller checks that the .dmg postinstall script had the installer
+// write and load the Agent's stable LaunchDaemons, from the same definitions the package ships as a
+// fallback, and that nothing else was loaded.
+func (m *macosInstallSuite) TestLaunchDaemonsInstalledByInstaller() {
+	macosTestClient := common.NewMacOSTestClient(m.Env().RemoteHost)
+
+	_, err := macosTestClient.Execute("sudo test -x /opt/datadog-agent/embedded/bin/installer")
+	require.NoError(m.T(), err, "the installer binary is not shipped in the package")
+
+	postinstallLog, err := macosTestClient.Execute("sudo cat /opt/datadog-agent/logs/postinstall.log")
+	require.NoError(m.T(), err)
+	assert.Contains(m.T(), postinstallLog, "# The installer postinst succeeded")
+	assert.NotContains(m.T(), postinstallLog, "(fallback)", "the postinstall script fell back to installing the LaunchDaemons itself")
+
+	// The fallback copies are root-owned, since launchd runs whatever is copied from them as root.
+	owner, err := macosTestClient.Execute("sudo stat -f '%Su:%Sg' /opt/datadog-agent/embedded/share/launchd")
+	require.NoError(m.T(), err)
+	assert.Equal(m.T(), "root:wheel", strings.TrimSpace(owner))
+
+	for _, label := range []string{
+		"com.datadoghq.procmgr",
+		"com.datadoghq.agent",
+		"com.datadoghq.sysprobe",
+		"com.datadoghq.data-plane",
+	} {
+		m.Run(label, func() {
+			plist := "/Library/LaunchDaemons/" + label + ".plist"
+			_, err := macosTestClient.Execute(fmt.Sprintf("sudo cmp %s /opt/datadog-agent/embedded/share/launchd/%s.plist", plist, label))
+			assert.NoError(m.T(), err, "%s differs from the definition the package ships", plist)
+
+			attributes, err := macosTestClient.Execute("sudo stat -f '%Su:%Sg %Lp' " + plist)
+			require.NoError(m.T(), err)
+			assert.Equal(m.T(), "root:wheel 644", strings.TrimSpace(attributes))
+
+			_, err = macosTestClient.Execute("sudo launchctl print system/" + label)
+			assert.NoError(m.T(), err, "%s is not loaded", label)
+		})
+	}
+
+	// The plist examples the LaunchDaemons used to be copied from are no longer shipped.
+	examples, err := macosTestClient.Execute("ls /opt/datadog-agent/etc/ | grep -E 'com\\.datadoghq\\.(agent|sysprobe|data-plane|procmgr)\\.plist\\.example' || true")
+	require.NoError(m.T(), err)
+	assert.Empty(m.T(), strings.TrimSpace(examples))
+
+	// The installer is only used to install the Agent's LaunchDaemons: it does not run as a daemon.
+	for _, label := range []string{"com.datadoghq.installer", "com.datadoghq.installer-exp", "com.datadoghq.agent-exp"} {
+		_, err := macosTestClient.Execute("sudo launchctl print system/" + label)
+		assert.Error(m.T(), err, "%s is loaded", label)
+		_, err = macosTestClient.Execute("sudo test -e /Library/LaunchDaemons/" + label + ".plist")
+		assert.Error(m.T(), err, "%s has a job definition", label)
+	}
+}
+
 func (m *macosInstallSuite) TestAgentStatusAndConfig() {
 	macosTestClient := common.NewMacOSTestClient(m.Env().RemoteHost)
 	confFilePath := macosConfDefaultConfPath + "/datadog.yaml"
