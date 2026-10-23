@@ -72,6 +72,12 @@ const (
 	ownerNameKey = "owner_name"
 	// namespaceKey represents the KSM label key namespace
 	namespaceKey = "namespace"
+	// deploymentKey represents the KSM label key deployment
+	deploymentKey = "deployment"
+	// statefulSetKey represents the KSM label key statefulset
+	statefulSetKey = "statefulset"
+	// replicaSetKey represents the KSM label key replicaset
+	replicaSetKey = "replicaset"
 )
 
 var extendedCollectors = map[string]string{
@@ -1038,7 +1044,7 @@ func (k *KSMCheck) processMetrics(sender sender.Sender, metrics map[string][]ksm
 			if transform, found := k.metricTransformers[metricFamily.Name]; found {
 				lMapperOverride := labelsMapperOverride(metricFamily.Name)
 				for _, m := range metricFamily.ListMetrics {
-					hostname, tagList := k.hostnameAndTags(m.Labels, labelJoiner, lMapperOverride)
+					hostname, tagList := k.hostnameAndTags(metricFamily.Name, m.Labels, labelJoiner, lMapperOverride)
 					transform(sender, metricFamily.Name, m, hostname, tagList, now)
 				}
 				continue
@@ -1050,7 +1056,7 @@ func (k *KSMCheck) processMetrics(sender sender.Sender, metrics map[string][]ksm
 			if ddname, found := k.metricNamesMapper[metricFamily.Name]; found {
 				lMapperOverride := labelsMapperOverride(metricFamily.Name)
 				for _, m := range metricFamily.ListMetrics {
-					hostname, tagList := k.hostnameAndTags(m.Labels, labelJoiner, lMapperOverride)
+					hostname, tagList := k.hostnameAndTags(metricFamily.Name, m.Labels, labelJoiner, lMapperOverride)
 					sender.Gauge(metricPrefix+ddname, m.Val, hostname, tagList)
 				}
 				continue
@@ -1075,10 +1081,10 @@ func (k *KSMCheck) processMetrics(sender sender.Sender, metrics map[string][]ksm
 	}
 }
 
-// hostnameAndTags returns the tags and the hostname for a metric based on the metric labels and the check configuration.
+// hostnameAndTags returns the tags and the hostname for a metric based on the metric name and labels and the check configuration.
 //
 // This function must always return a "fresh" slice of tags, that will not be accessed after return.
-func (k *KSMCheck) hostnameAndTags(labels map[string]string, labelJoiner *labelJoiner, lMapperOverride map[string]string) (string, []string) {
+func (k *KSMCheck) hostnameAndTags(metricName string, labels map[string]string, labelJoiner *labelJoiner, lMapperOverride map[string]string) (string, []string) {
 	hostname := ""
 
 	labelsToAdd := labelJoiner.getLabelsToAdd(labels)
@@ -1088,11 +1094,20 @@ func (k *KSMCheck) hostnameAndTags(labels map[string]string, labelJoiner *labelJ
 
 	ownerKind, ownerName, resourceNamespace := "", "", ""
 	isArgoRollout := false
+	// workload labels, used to find the autoscalers of the workload
+	deploymentLabel, statefulSetLabel, replicaSetLabel := "", "", ""
 
 	for key, value := range labels {
 
-		if key == namespaceKey {
+		switch key {
+		case namespaceKey:
 			resourceNamespace = value
+		case deploymentKey:
+			deploymentLabel = value
+		case statefulSetKey:
+			statefulSetLabel = value
+		case replicaSetKey:
+			replicaSetLabel = value
 		}
 
 		switch key {
@@ -1166,7 +1181,84 @@ func (k *KSMCheck) hostnameAndTags(labels map[string]string, labelJoiner *labelJ
 		tagList = append(tagList, namespaceTags...)
 	}
 
+	if resourceNamespace != "" {
+		for _, entityID := range autoscaledWorkloadEntityIDs(metricName, resourceNamespace, ownerKind, ownerName, isArgoRollout, deploymentLabel, statefulSetLabel, replicaSetLabel) {
+			// A missing entity means no autoscaler and returns no tags.
+			autoscalerTags, _ := k.tagger.Tag(entityID, types.LowCardinality)
+			tagList = append(tagList, autoscalerTags...)
+		}
+	}
+
 	return hostname, tagList
+}
+
+// autoscaledWorkloadEntityIDs returns the IDs of the tagger entities that hold
+// the kube_autoscaler_kind tags of the workload a metric belongs to. Only pod,
+// container, ReplicaSet, Deployment and StatefulSet metrics get those tags.
+func autoscaledWorkloadEntityIDs(metricName, namespace, ownerKind, ownerName string, isArgoRollout bool, deploymentLabel, statefulSetLabel, replicaSetLabel string) []types.EntityID {
+	entityID := func(kind workloadmeta.AutoscalerTargetKind, name string) types.EntityID {
+		return types.NewKubernetesAutoscaledWorkloadEntityID(string(kind), namespace, name)
+	}
+
+	// A Deployment and an Argo Rollout with the same name in the same
+	// namespace are unlikely, so both are looked up when the kind of owner of
+	// a ReplicaSet is unknown.
+	deploymentOrArgoRollout := func(name string) []types.EntityID {
+		return []types.EntityID{
+			entityID(workloadmeta.AutoscalerTargetDeployment, name),
+			entityID(workloadmeta.AutoscalerTargetArgoRollout, name),
+		}
+	}
+
+	switch {
+	case strings.HasPrefix(metricName, "kube_pod_"):
+		switch ownerKind {
+		case kubernetes.ReplicaSetKind:
+			name := kubernetes.ParseDeploymentForReplicaSet(ownerName)
+			if name == "" {
+				return nil
+			}
+			if isArgoRollout {
+				return []types.EntityID{entityID(workloadmeta.AutoscalerTargetArgoRollout, name)}
+			}
+			// The Argo Rollout label is missing on aggregated metrics (e.g.
+			// pod.count)
+			return deploymentOrArgoRollout(name)
+		case kubernetes.DeploymentKind:
+			// Pods aren't owned by Deployments, but the with_owner_tag
+			// metrics replace the ReplicaSet owner with a Deployment parsed
+			// from its name, also for Argo Rollouts
+			return deploymentOrArgoRollout(ownerName)
+		case kubernetes.StatefulSetKind:
+			return []types.EntityID{entityID(workloadmeta.AutoscalerTargetStatefulSet, ownerName)}
+		}
+
+	case strings.HasPrefix(metricName, "kube_replicaset_"):
+		// The ReplicaSet owner is only known for kube_replicaset_owner
+		switch ownerKind {
+		case kubernetes.DeploymentKind:
+			return []types.EntityID{entityID(workloadmeta.AutoscalerTargetDeployment, ownerName)}
+		case kubernetes.RolloutKind:
+			return []types.EntityID{entityID(workloadmeta.AutoscalerTargetArgoRollout, ownerName)}
+		}
+		// Otherwise, the ReplicaSet can belong to a Deployment or to an Argo
+		// Rollout
+		if name := kubernetes.ParseDeploymentForReplicaSet(replicaSetLabel); name != "" {
+			return deploymentOrArgoRollout(name)
+		}
+
+	case strings.HasPrefix(metricName, "kube_deployment_"):
+		if deploymentLabel != "" {
+			return []types.EntityID{entityID(workloadmeta.AutoscalerTargetDeployment, deploymentLabel)}
+		}
+
+	case strings.HasPrefix(metricName, "kube_statefulset_"):
+		if statefulSetLabel != "" {
+			return []types.EntityID{entityID(workloadmeta.AutoscalerTargetStatefulSet, statefulSetLabel)}
+		}
+	}
+
+	return nil
 }
 
 // familyFilter is a metric families filter for label joins
