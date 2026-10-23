@@ -82,6 +82,11 @@ type WorkloadMetaCollector struct {
 	// considering cross-entity dependencies (for example, a container's pod).
 	entityCompleteness map[workloadmeta.EntityID]bool
 
+	// Index of autoscalers: their target by ID, and their kind by target
+	// and ID, for efficient lookups
+	autoscalers         map[string]autoscalerTarget
+	autoscalersByTarget map[autoscalerTarget]map[string]workloadmeta.AutoscalerKind
+
 	// refreshCh routes tag refresh requests through the stream goroutine, avoiding races with staticTags reads in processEvents.
 	refreshCh chan refreshRequest
 }
@@ -253,6 +258,8 @@ func NewWorkloadMetaCollector(ctx context.Context, cfg config.Component, store w
 		collectEC2ResourceTags:            cfg.GetBool("ecs_collect_resource_tags_ec2"),
 		collectPersistentVolumeClaimsTags: cfg.GetBool("kubernetes_persistent_volume_claims_as_tags"),
 		entityCompleteness:                make(map[workloadmeta.EntityID]bool),
+		autoscalers:                       make(map[string]autoscalerTarget),
+		autoscalersByTarget:               make(map[autoscalerTarget]map[string]workloadmeta.AutoscalerKind),
 		refreshCh:                         make(chan refreshRequest),
 	}
 

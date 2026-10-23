@@ -56,7 +56,7 @@ const (
 	// no importing due to packages it pulls
 	datadogAutoscalingIDAnnotation = "autoscaling.datadoghq.com/autoscaler-id"
 
-	datadogPodAutoscalerKind = "dpa"
+	datadogPodAutoscalerKind = string(workloadmeta.AutoscalerKindDPA)
 )
 
 var (
@@ -126,17 +126,43 @@ var (
 	logLimiter = log.NewLogLimit(20, 10*time.Minute)
 )
 
+// autoscalerTarget is a workload that autoscalers can target
+type autoscalerTarget struct {
+	namespace string
+	kind      workloadmeta.AutoscalerTargetKind
+	name      string
+}
+
 func (c *WorkloadMetaCollector) processEvents(evBundle workloadmeta.EventBundle) {
 	var tagInfos []*types.TagInfo
+
+	// Autoscaler targets with changes in this bundle
+	autoscalerTargets := make(map[autoscalerTarget]struct{})
 
 	for _, ev := range evBundle.Events {
 		entity := ev.Entity
 		entityID := entity.GetID()
 
 		if entityID.Kind == workloadmeta.KindKubeletMetrics ||
-			entityID.Kind == workloadmeta.KindKubelet ||
-			entityID.Kind == workloadmeta.KindKubernetesAutoscaler {
+			entityID.Kind == workloadmeta.KindKubelet {
 			// No tags. Ignore
+			continue
+		}
+
+		if entityID.Kind == workloadmeta.KindKubernetesAutoscaler {
+			// Autoscalers don't have tagger entities of their own. Their tags
+			// are added to the pods of the workloads they target, so the pods
+			// of the previous and the new target need to be re-tagged.
+			autoscaler := entity.(*workloadmeta.KubernetesAutoscaler)
+			// Set events don't carry the previous target, so it comes from
+			// the index
+			if previous, found := c.autoscalers[entityID.ID]; found {
+				autoscalerTargets[previous] = struct{}{}
+			}
+			if ev.Type == workloadmeta.EventTypeSet {
+				autoscalerTargets[autoscalerTargetOf(autoscaler)] = struct{}{}
+			}
+			c.updateAutoscalerIndex(ev.Type, autoscaler)
 			continue
 		}
 
@@ -212,6 +238,10 @@ func (c *WorkloadMetaCollector) processEvents(evBundle workloadmeta.EventBundle)
 			log.Errorf("cannot handle event of type %d", ev.Type)
 		}
 
+	}
+
+	if len(autoscalerTargets) > 0 {
+		tagInfos = append(tagInfos, c.retagAutoscalerDependentPods(autoscalerTargets)...)
 	}
 
 	if len(tagInfos) > 0 {
@@ -566,6 +596,7 @@ func (c *WorkloadMetaCollector) extractTagsFromPodEntity(pod *workloadmeta.Kuber
 	if pod.Annotations[datadogAutoscalingIDAnnotation] != "" {
 		tagList.AddLow(tags.KubeAutoscalerKind, datadogPodAutoscalerKind)
 	}
+	c.extractTagsFromPodAutoscalers(pod, tagList)
 
 	kubeServiceDisabled := slices.Contains(c.cfg.GetStringSlice("kubernetes_ad_tags_disabled"), "kube_service")
 	if slices.Contains(strings.Split(pod.Annotations["tags.datadoghq.com/disable"], ","), "kube_service") {
@@ -1453,6 +1484,86 @@ func (c *WorkloadMetaCollector) getKueueWorkloadForPod(pod *workloadmeta.Kuberne
 	}
 
 	return workload
+}
+
+// autoscalerTargetOf returns the workload targeted by the given autoscaler
+func autoscalerTargetOf(autoscaler *workloadmeta.KubernetesAutoscaler) autoscalerTarget {
+	return autoscalerTarget{
+		namespace: autoscaler.Namespace,
+		kind:      autoscaler.TargetKind,
+		name:      autoscaler.TargetName,
+	}
+}
+
+func (c *WorkloadMetaCollector) updateAutoscalerIndex(eventType workloadmeta.EventType, autoscaler *workloadmeta.KubernetesAutoscaler) {
+	id := autoscaler.EntityID.ID
+
+	if previous, found := c.autoscalers[id]; found {
+		delete(c.autoscalers, id)
+		delete(c.autoscalersByTarget[previous], id)
+		if len(c.autoscalersByTarget[previous]) == 0 {
+			delete(c.autoscalersByTarget, previous)
+		}
+	}
+
+	if eventType == workloadmeta.EventTypeSet {
+		target := autoscalerTargetOf(autoscaler)
+		c.autoscalers[id] = target
+		if c.autoscalersByTarget[target] == nil {
+			c.autoscalersByTarget[target] = make(map[string]workloadmeta.AutoscalerKind)
+		}
+		c.autoscalersByTarget[target][id] = autoscaler.AutoscalerKind
+	}
+}
+
+func (c *WorkloadMetaCollector) extractTagsFromPodAutoscalers(pod *workloadmeta.KubernetesPod, tagList *taglist.TagList) {
+	target, ok := podAutoscalerTarget(pod)
+	if !ok {
+		return
+	}
+
+	for _, kind := range c.autoscalersByTarget[target] {
+		tagList.AddLow(tags.KubeAutoscalerKind, string(kind))
+	}
+}
+
+// podAutoscalerTarget returns the workload of the pod that an autoscaler can
+// target (Deployment, StatefulSet or Argo Rollout) by checking the pod owners
+func podAutoscalerTarget(pod *workloadmeta.KubernetesPod) (autoscalerTarget, bool) {
+	for _, owner := range pod.Owners {
+		kind, name := kubernetes.ResolvePodRootOwner(owner.Kind, owner.Name, pod.Labels)
+		switch kind {
+		case kubernetes.DeploymentKind:
+			return autoscalerTarget{namespace: pod.Namespace, kind: workloadmeta.AutoscalerTargetDeployment, name: name}, true
+		case kubernetes.StatefulSetKind:
+			return autoscalerTarget{namespace: pod.Namespace, kind: workloadmeta.AutoscalerTargetStatefulSet, name: name}, true
+		case kubernetes.RolloutKind:
+			return autoscalerTarget{namespace: pod.Namespace, kind: workloadmeta.AutoscalerTargetArgoRollout, name: name}, true
+		}
+	}
+	return autoscalerTarget{}, false
+}
+
+// retagAutoscalerDependentPods recomputes the tags of the pods of the given
+// autoscaler targets. Pod tags depend on the autoscalers, but autoscaler
+// changes don't generate pod events, so the pods need to be re-tagged here.
+func (c *WorkloadMetaCollector) retagAutoscalerDependentPods(targets map[autoscalerTarget]struct{}) []*types.TagInfo {
+	var tagInfos []*types.TagInfo
+	for _, pod := range c.store.ListKubernetesPods() {
+		target, ok := podAutoscalerTarget(pod)
+		if !ok {
+			continue
+		}
+		if _, affected := targets[target]; !affected {
+			continue
+		}
+		tagInfos = append(tagInfos, c.handleKubePod(workloadmeta.Event{
+			Type:       workloadmeta.EventTypeSet,
+			Entity:     pod,
+			IsComplete: c.entityCompleteness[pod.EntityID],
+		})...)
+	}
+	return tagInfos
 }
 
 func (c *WorkloadMetaCollector) extractTagsFromPodOwner(pod *workloadmeta.KubernetesPod, owner workloadmeta.KubernetesPodOwner, tagList *taglist.TagList) {
