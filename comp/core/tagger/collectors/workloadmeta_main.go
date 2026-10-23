@@ -46,6 +46,7 @@ const (
 	gpuSource                 = workloadmetaCollectorName + "-" + string(workloadmeta.KindGPU)
 	crdSource                 = workloadmetaCollectorName + "-" + string(workloadmeta.KindCRD)
 	kubeCapabilitiesSource    = workloadmetaCollectorName + "-" + string(workloadmeta.KindKubeCapabilities)
+	autoscaledWorkloadSource  = workloadmetaCollectorName + "-" + string(workloadmeta.KindKubernetesAutoscaler)
 
 	clusterTagNamePrefix = tags.KubeClusterName
 )
@@ -89,6 +90,8 @@ type WorkloadMetaCollector struct {
 
 	// refreshCh routes tag refresh requests through the stream goroutine, avoiding races with staticTags reads in processEvents.
 	refreshCh chan refreshRequest
+
+	isClusterAgent bool
 }
 
 // refreshRequest asks the stream goroutine to recompute static global tags, signaling done once it has.
@@ -261,6 +264,7 @@ func NewWorkloadMetaCollector(ctx context.Context, cfg config.Component, store w
 		autoscalers:                       make(map[string]autoscalerTarget),
 		autoscalersByTarget:               make(map[autoscalerTarget]map[string]workloadmeta.AutoscalerKind),
 		refreshCh:                         make(chan refreshRequest),
+		isClusterAgent:                    flavor.GetFlavor() == flavor.ClusterAgent,
 	}
 
 	containerLabelsAsTags := mergeMaps(
