@@ -15,7 +15,6 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/fleet/installer/packages/embedded"
 	"github.com/DataDog/datadog-agent/pkg/fleet/installer/packages/launchd"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 var datadogAgentPackage = hooks{
@@ -80,13 +79,15 @@ func loadStableJob(ctx context.Context, client *launchd.Client, label string) er
 		return fmt.Errorf("failed to read job definition %s: %w", label, err)
 	}
 	job := stableJob(label)
+	// Unload before rewriting so the new definition is the one launchd runs: launchd caches the
+	// definition it loaded, and bootstrapping over a loaded job is a no-op. If the job can't be
+	// unloaded, leave its file untouched and fail, so the postinstall fallback sees a definition
+	// that differs from the shipped one and reloads it instead of skipping it.
+	if err := client.Bootout(ctx, label); err != nil {
+		return fmt.Errorf("failed to unload %s before reloading it: %w", label, err)
+	}
 	if err := job.Write(definition); err != nil {
 		return fmt.Errorf("failed to write job definition %s: %w", label, err)
-	}
-	// Bootout first so a rewritten definition is the one launchd is running: launchd
-	// caches the definition it loaded, and bootstrapping over a loaded job is a no-op.
-	if err := client.Bootout(ctx, label); err != nil {
-		log.Warnf("failed to unload %s before reloading it: %v", label, err)
 	}
 	// A persistent disabled override prevents bootstrap, not just process startup.
 	if err := client.Enable(ctx, label); err != nil {

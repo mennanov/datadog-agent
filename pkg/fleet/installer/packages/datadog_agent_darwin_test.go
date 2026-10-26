@@ -223,3 +223,40 @@ func TestPostInstallDMGIsIdempotent(t *testing.T) {
 		assert.Equal(t, first[label], content)
 	}
 }
+
+// TestLoadStableJobKeepsTheOldDefinitionWhenBootoutFails guards the postinstall fallback: when a
+// loaded job can't be unloaded, its file must stay as it was and the job must fail, so the
+// fallback finds a definition that differs from the shipped one and reloads the job, instead of
+// skipping a job that launchd still runs from its old, cached definition.
+func TestLoadStableJobKeepsTheOldDefinitionWhenBootoutFails(t *testing.T) {
+	calls := stubLaunchd(t)
+	dir := stubJobDir(t)
+	label := stableJobs[0]
+	path := filepath.Join(dir, label+".plist")
+	require.NoError(t, os.WriteFile(path, []byte("old definition"), 0o644))
+	stub := launchdClient
+	launchdClient = func() *launchd.Client {
+		client := stub()
+		record := client.Runner
+		client.Runner = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			if args[0] == "bootout" {
+				return nil, errors.New("operation now in progress")
+			}
+			if args[0] == "print" {
+				return []byte("state = running"), nil
+			}
+			return record(ctx, name, args...)
+		}
+		return client
+	}
+
+	err := loadStableJob(context.Background(), launchdClient(), label)
+
+	require.Error(t, err)
+	content, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Equal(t, "old definition", string(content))
+	for _, call := range *calls {
+		assert.NotContains(t, []string{"enable", "bootstrap", "kickstart"}, call[0], "%s ran after a failed bootout", call[0])
+	}
+}

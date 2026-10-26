@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-	"time"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -254,39 +254,40 @@ func TestBootoutNamesTheServiceTarget(t *testing.T) {
 // a bare "Input/output error". Bootout must not return until a print poll confirms the label is
 // gone.
 func TestBootoutWaitsForTheJobToLeaveTheDomain(t *testing.T) {
-	rec := &recorder{
-		outputs: [][]byte{
-			nil,                        // bootout
-			[]byte(runningPrintOutput), // print: still loaded
-			[]byte(runningPrintOutput), // print: still loaded
-			[]byte(notLoadedOutput),    // print: finally gone
-		},
-		errs: []error{nil, nil, nil, exitError(113)},
-	}
-	c := newClient(rec)
-	c.BootoutSettlePollInterval = time.Millisecond
-	require.NoError(t, c.Bootout(context.Background(), "com.datadoghq.agent"))
-
-	var prints int
-	for _, call := range rec.calls {
-		if len(call.args) > 0 && call.args[0] == "print" {
-			prints++
+	synctest.Test(t, func(t *testing.T) {
+		rec := &recorder{
+			outputs: [][]byte{
+				nil,                        // bootout
+				[]byte(runningPrintOutput), // print: still loaded
+				[]byte(runningPrintOutput), // print: still loaded
+				[]byte(notLoadedOutput),    // print: finally gone
+			},
+			errs: []error{nil, nil, nil, exitError(113)},
 		}
-	}
-	assert.Equal(t, 3, prints, "Bootout must poll print until the label is actually gone")
+		c := newClient(rec)
+		require.NoError(t, c.Bootout(context.Background(), "com.datadoghq.agent"))
+
+		var prints int
+		for _, call := range rec.calls {
+			if len(call.args) > 0 && call.args[0] == "print" {
+				prints++
+			}
+		}
+		assert.Equal(t, 3, prints, "Bootout must poll print until the label is actually gone")
+	})
 }
 
 // TestBootoutTimesOutIfTheJobNeverLeaves is the regression guard for the settle loop itself: it
 // must fail loudly rather than hang forever or silently report success on a label that never
 // actually left the domain.
 func TestBootoutTimesOutIfTheJobNeverLeaves(t *testing.T) {
-	c := NewClient(System)
-	c.Runner = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
-		return []byte(runningPrintOutput), nil
-	}
-	c.BootoutSettleTimeout = 10 * time.Millisecond
-	c.BootoutSettlePollInterval = time.Millisecond
-	assert.Error(t, c.Bootout(context.Background(), "com.datadoghq.agent"))
+	synctest.Test(t, func(t *testing.T) {
+		c := NewClient(System)
+		c.Runner = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+			return []byte(runningPrintOutput), nil
+		}
+		assert.Error(t, c.Bootout(context.Background(), "com.datadoghq.agent"))
+	})
 }
 
 func TestCommandConstruction(t *testing.T) {
