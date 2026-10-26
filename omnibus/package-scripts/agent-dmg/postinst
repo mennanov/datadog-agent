@@ -331,6 +331,11 @@ fi
 # If the installer cannot run, or fails, the Agent's LaunchDaemons are installed the way earlier
 # versions did, from plain copies of the same definitions (install_fallback_launchdaemons), so the
 # Agent always ends up running.
+#
+# A LaunchDaemon the fallback can't load is reported in the install log but doesn't fail the
+# install. This keeps the behavior of earlier versions, which only printed a warning when a
+# bootstrap failed. Failing here would make macOS installs stricter than they have ever been, and
+# would roll back the binaries this install just laid down, on every Mac it reaches.
 echo "# Installing process manager, agent, system-probe and Agent Data Plane as system-wide LaunchDaemons"
 INSTALLER_BIN="$INSTALL_DIR/embedded/bin/installer"
 if [ -x "$INSTALLER_BIN" ]; then
