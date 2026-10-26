@@ -53,6 +53,7 @@ const (
 	KindKubernetesKueueQueue          Kind = "kubernetes_kueue_queue"
 	KindKubernetesKueueResourceFlavor Kind = "kubernetes_kueue_resource_flavor"
 	KindKubernetesKueueWorkload       Kind = "kubernetes_kueue_workload"
+	KindKubernetesAutoscaler          Kind = "kubernetes_autoscaler"
 	KindECSTask                       Kind = "ecs_task"
 	KindContainerImageMetadata        Kind = "container_image_metadata"
 	KindProcess                       Kind = "process"
@@ -1695,6 +1696,96 @@ func (w KubernetesKueueWorkload) String(verbose bool) string {
 }
 
 var _ Entity = &KubernetesKueueWorkload{}
+
+// AutoscalerKind is the kind of autoscaler that targets a workload.
+type AutoscalerKind string
+
+const (
+	// AutoscalerKindHPA is a HorizontalPodAutoscaler.
+	AutoscalerKindHPA AutoscalerKind = "hpa"
+	// AutoscalerKindVPA is a VerticalPodAutoscaler.
+	AutoscalerKindVPA AutoscalerKind = "vpa"
+	// AutoscalerKindWPA is a WatermarkPodAutoscaler.
+	AutoscalerKindWPA AutoscalerKind = "wpa"
+	// AutoscalerKindDPA is a DatadogPodAutoscaler.
+	AutoscalerKindDPA AutoscalerKind = "dpa"
+	// AutoscalerKindKEDA is a HorizontalPodAutoscaler managed by a KEDA
+	// ScaledObject.
+	AutoscalerKindKEDA AutoscalerKind = "keda"
+)
+
+// AutoscalerTargetKind is the kind of workload targeted by an autoscaler.
+type AutoscalerTargetKind string
+
+const (
+	// AutoscalerTargetDeployment is a Deployment.
+	AutoscalerTargetDeployment AutoscalerTargetKind = "deployment"
+	// AutoscalerTargetStatefulSet is a StatefulSet.
+	AutoscalerTargetStatefulSet AutoscalerTargetKind = "statefulset"
+	// AutoscalerTargetArgoRollout is an Argo Rollout.
+	AutoscalerTargetArgoRollout AutoscalerTargetKind = "argo_rollout"
+)
+
+// GenerateKubernetesAutoscalerEntityID returns the workloadmeta entity ID for
+// an autoscaler. KEDA autoscalers are HPAs owned by a ScaledObject, so their
+// resource is hpa.
+func GenerateKubernetesAutoscalerEntityID(kind AutoscalerKind, namespace, name string) EntityID {
+	resource := string(kind)
+	if kind == AutoscalerKindKEDA {
+		resource = string(AutoscalerKindHPA)
+	}
+	return EntityID{
+		Kind: KindKubernetesAutoscaler,
+		ID:   resource + "/" + namespace + "/" + name,
+	}
+}
+
+// KubernetesAutoscaler is an Entity representing an autoscaler and the workload
+// it targets.
+type KubernetesAutoscaler struct {
+	EntityID
+	EntityMeta
+	AutoscalerKind AutoscalerKind
+	TargetKind     AutoscalerTargetKind
+	TargetName     string
+}
+
+// GetID implements Entity#GetID.
+func (a *KubernetesAutoscaler) GetID() EntityID {
+	return a.EntityID
+}
+
+// Merge implements Entity#Merge.
+func (a *KubernetesAutoscaler) Merge(e Entity) error {
+	aa, ok := e.(*KubernetesAutoscaler)
+	if !ok {
+		return fmt.Errorf("cannot merge KubernetesAutoscaler with different kind %T", e)
+	}
+
+	return merge(a, aa)
+}
+
+// DeepCopy implements Entity#DeepCopy.
+func (a KubernetesAutoscaler) DeepCopy() Entity {
+	ca := deepcopy.Copy(a).(KubernetesAutoscaler)
+	return &ca
+}
+
+// String implements Entity#String.
+func (a KubernetesAutoscaler) String(verbose bool) string {
+	var sb strings.Builder
+	_, _ = fmt.Fprintln(&sb, "----------- Entity ID -----------")
+	_, _ = fmt.Fprint(&sb, a.EntityID.String(verbose))
+	_, _ = fmt.Fprintln(&sb, "----------- Entity Meta -----------")
+	_, _ = fmt.Fprint(&sb, a.EntityMeta.String(verbose))
+	_, _ = fmt.Fprintln(&sb, "----------- Autoscaler -----------")
+	_, _ = fmt.Fprintln(&sb, "Autoscaler Kind:", a.AutoscalerKind)
+	_, _ = fmt.Fprintln(&sb, "Target Kind:", a.TargetKind)
+	_, _ = fmt.Fprintln(&sb, "Target Name:", a.TargetName)
+	return sb.String()
+}
+
+var _ Entity = &KubernetesAutoscaler{}
 
 // ECSTaskKnownStatusStopped is the known status of an ECS task that has stopped.
 const ECSTaskKnownStatusStopped = "STOPPED"

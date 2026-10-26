@@ -407,3 +407,23 @@ func TestMergeGPU(t *testing.T) {
 	assert.Equal(t, gpu1.Vendor, "nvidia")
 	assert.ElementsMatch(t, gpu1.ChildrenGPUUUIDs, []string{"gpu-4-id", "gpu-5-id"})
 }
+
+func TestGenerateKubernetesAutoscalerEntityID(t *testing.T) {
+	tests := []struct {
+		kind     AutoscalerKind
+		expected string
+	}{
+		{kind: AutoscalerKindHPA, expected: "hpa/default/my-autoscaler"},
+		{kind: AutoscalerKindKEDA, expected: "hpa/default/my-autoscaler"}, // KEDA ScaledObject owns an HPA
+		{kind: AutoscalerKindVPA, expected: "vpa/default/my-autoscaler"},
+		{kind: AutoscalerKindWPA, expected: "wpa/default/my-autoscaler"},
+		{kind: AutoscalerKindDPA, expected: "dpa/default/my-autoscaler"},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.kind), func(t *testing.T) {
+			entityID := GenerateKubernetesAutoscalerEntityID(test.kind, "default", "my-autoscaler")
+			assert.Equal(t, EntityID{Kind: KindKubernetesAutoscaler, ID: test.expected}, entityID)
+		})
+	}
+}
