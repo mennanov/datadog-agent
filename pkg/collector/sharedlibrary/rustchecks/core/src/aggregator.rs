@@ -30,7 +30,8 @@ pub enum ServiceCheckStatus {
 /// Log level of a message routed to the Agent logger.
 ///
 /// Enums are the rtloader `log_level_t` values, i.e. the same levels
-/// as python checks use.
+/// as python checks use. Keep in sync with the levels in `LogMsg` in
+/// pkg/collector/aggregator/aggregator.go. Checked by blockwatch.toml.
 #[repr(C)]
 pub enum LogLevel {
     Trace = 7,
