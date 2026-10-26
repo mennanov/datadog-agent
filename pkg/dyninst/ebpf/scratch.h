@@ -403,6 +403,7 @@ scratch_buf_serialize_bounded(scratch_buf_t* scratch_buf,
 // so that we almost always hit it. The tradeoff is that even if the pointer we
 // want to dereference is only 1 byte, we'd need 1KiB of space left in the
 // buffer to get it. That seems like a reasonable tradeoff at this point.
+// The largest size must equal MAX_DATA_ITEM_SIZE below. Checked by blockwatch.toml.
 #define SIZE_LIST \
   X(64)           \
   X(256)          \
@@ -418,7 +419,8 @@ scratch_buf_serialize_bounded(scratch_buf_t* scratch_buf,
 // so an oversized maxLength / collection size produces a truncated
 // capture rather than a silent skip (see stack_machine.h).
 //
-// Keep in sync with SIZE_LIST above.
+// Keep in sync with SIZE_LIST above and with MaxDataItemSize in
+// pkg/dyninst/output/event.go. Checked by blockwatch.toml.
 #define MAX_DATA_ITEM_SIZE 8192
 
 #define X(max_size)                                                          \

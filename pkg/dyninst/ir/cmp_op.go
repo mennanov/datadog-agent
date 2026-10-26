@@ -9,7 +9,8 @@ package ir
 
 // CmpOp identifies which comparison an ExprCmpBaseOp / ExprCmpStringOp
 // performs. The numeric values are part of the wire format encoded into
-// the stack-machine bytecode — never reorder or remove members.
+// the stack-machine bytecode — never reorder or remove members. Must stay in
+// sync with cmp_op_t in pkg/dyninst/ebpf/types.h. Checked by blockwatch.toml.
 type CmpOp uint8
 
 const (

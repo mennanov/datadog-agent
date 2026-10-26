@@ -11,7 +11,8 @@ package ir
 // Strings, equality, and inequality treat the buffer bytes verbatim — only
 // ordering on multi-byte integers needs the kind to pick between unsigned
 // and signed two's-complement semantics. The numeric values are part of
-// the wire format.
+// the wire format. Must stay in sync with cmp_kind_t in
+// pkg/dyninst/ebpf/types.h. Checked by blockwatch.toml.
 type CmpKind uint8
 
 const (

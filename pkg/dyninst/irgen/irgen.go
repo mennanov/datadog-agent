@@ -780,7 +780,7 @@ type analyzedCondition struct {
 // leaf's outcome as a 2-bit status in condition_state (uint16; see
 // call_depths_entry_t.condition_state in pkg/dyninst/ebpf/context.h).
 // Keep in sync with MAX_CONDITION_ENTRY_LEAVES in
-// pkg/dyninst/ebpf/context.h.
+// pkg/dyninst/ebpf/context.h. Checked by blockwatch.toml.
 const maxConditionEntryLeaves = 8
 
 // analyzedProbe holds all analyzed expressions for a single probe instance.
