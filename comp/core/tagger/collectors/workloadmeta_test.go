@@ -1746,11 +1746,17 @@ func TestHandleKubeKueueWorkload(t *testing.T) {
 	collector := NewWorkloadMetaCollector(context.Background(), cfg, store, nil)
 	collector.initK8sResourcesMetaAsTags(
 		map[string]map[string]string{
+			"pods": {
+				"team": "team",
+			},
 			kubernetes.KueueWorkloadResourceName + "." + kubernetes.KueueGroupName: {
 				"team": "workload_team",
 			},
 		},
 		map[string]map[string]string{
+			"pods": {
+				"workload-owner": "workload_owner",
+			},
 			kubernetes.KueueWorkloadResourceName + "." + kubernetes.KueueGroupName: {
 				"owner": "workload_owner",
 			},
@@ -1774,6 +1780,13 @@ func TestHandleKubeKueueWorkload(t *testing.T) {
 			},
 			QueueName:        "batch",
 			ClusterQueueName: "cluster-batch",
+			PodTemplateLabels: map[string]string{
+				"team":       "ccm-allocation",
+				"spark-role": "driver",
+			},
+			PodTemplateAnnotations: map[string]string{
+				"workload-owner": "gpu-monitoring",
+			},
 			PodSetAssignments: []workloadmeta.KueuePodSetAssignment{
 				{Name: "main", Flavors: map[string]string{"cpu": "default", "nvidia.com/gpu": "a100"}},
 				{Name: "sidecar", Flavors: map[string]string{"cpu": "default"}},
@@ -1801,6 +1814,8 @@ func TestHandleKubeKueueWorkload(t *testing.T) {
 				"kueue_local_queue:batch",
 				"kueue_resource_flavor:a100",
 				"kueue_resource_flavor:default",
+				"team:ccm-allocation",
+				"workload_owner:gpu-monitoring",
 				"workload_owner:team-a",
 				"workload_team:ml",
 			},
@@ -1915,6 +1930,12 @@ func TestKueueWorkloadResourceFlavorTagsPropagateToPodContainers(t *testing.T) {
 				},
 				QueueName:        "batch",
 				ClusterQueueName: "cluster-batch",
+				PodTemplateLabels: map[string]string{
+					"team": "ccm-allocation",
+				},
+				PodTemplateAnnotations: map[string]string{
+					"workload-owner": "gpu-monitoring",
+				},
 				PodSetAssignments: []workloadmeta.KueuePodSetAssignment{
 					{Name: "main", Flavors: map[string]string{"nvidia.com/gpu": "a100"}},
 					{Name: "other", Flavors: map[string]string{"nvidia.com/gpu": "h100"}},
@@ -1949,6 +1970,12 @@ func TestKueueWorkloadResourceFlavorTagsPropagateToPodContainers(t *testing.T) {
 
 			cfg := configmock.New(t)
 			collector := NewWorkloadMetaCollector(context.Background(), cfg, store, nil)
+			collector.initK8sResourcesMetaAsTags(
+				map[string]map[string]string{
+					"pods": {"team": "team"},
+				},
+				nil,
+			)
 
 			actual := collector.handleKubePod(workloadmeta.Event{
 				Type: workloadmeta.EventTypeSet,
@@ -1986,7 +2013,9 @@ func TestKueueWorkloadResourceFlavorTagsPropagateToPodContainers(t *testing.T) {
 					"kueue_cluster_queue:cluster-batch",
 					"kueue_local_queue:batch",
 					"kueue_resource_flavor:a100",
+					"team:ccm-allocation",
 				})
+				assert.NotContains(t, tagInfo.LowCardTags, "workload-owner:gpu-monitoring")
 				assert.Subset(t, tagInfo.OrchestratorCardTags, []string{
 					"kueue_workload:job-sample",
 				})
