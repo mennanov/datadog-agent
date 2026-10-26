@@ -1,15 +1,20 @@
 [Unit]
+Before=datadog-agent.service datadog-agent-exp.service
 Description=Datadog rshell privileged helper
-After=datadog-agent.service datadog-agent-action.service
-BindsTo=datadog-agent.service datadog-agent-action.service
-Conflicts=datadog-agent-rshell-privileged-exp.service
+BindsTo=datadog-agent.service
+Conflicts=datadog-agent-exp.service datadog-agent-rshell-privileged-exp.service
 ConditionPathExists=/opt/datadog-agent/embedded/bin/rshell
 
 [Service]
 Type=simple
 Group=dd-agent
 UMask=0077
-ExecStart=/opt/datadog-agent/embedded/bin/rshell privileged-helper --policy=/etc/datadog-agent-rshell/policy.json --idle-timeout=30s
+RuntimeDirectory=datadog-agent-rshell
+RuntimeDirectoryMode=0755
+EnvironmentFile=-/etc/datadog-agent/environment
+Environment="DD_FLEET_POLICIES_DIR=/etc/datadog-agent/managed/datadog-agent/stable"
+ExecStart=/opt/datadog-agent/embedded/bin/rshell privileged-helper --config=/etc/datadog-agent/datadog.yaml --socket=/run/datadog-agent-rshell/privileged.sock --policy=/etc/datadog-agent-rshell/policy.json --idle-timeout=0
+Restart=on-failure
 PrivateNetwork=yes
 RestrictAddressFamilies=AF_UNIX
 LockPersonality=yes
