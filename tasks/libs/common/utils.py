@@ -205,12 +205,9 @@ def get_bazel_python_home(rtloader_lib):
 
 
 def get_embedded_path(ctx):
-    base = os.path.dirname(os.path.abspath(__file__))
-    task_repo_root = os.path.abspath(os.path.join(base, "..", ".."))
-    git_repo_root = get_root()
     gopath_root = f"{get_gopath(ctx)}/src/github.com/DataDog/datadog-agent"
 
-    for root_candidate in [task_repo_root, git_repo_root, gopath_root]:
+    for root_candidate in [get_repo_root(), gopath_root]:
         test_embedded_path = os.path.join(root_candidate, "dev")
         if os.path.exists(test_embedded_path):
             return test_embedded_path
@@ -524,13 +521,6 @@ def get_go_version():
     Get the version of Go used
     """
     return check_output(['go', 'version']).decode('utf-8').strip()
-
-
-def get_root():
-    """
-    Get the root of the Go project
-    """
-    return check_output(['git', 'rev-parse', '--show-toplevel']).decode('utf-8').strip()
 
 
 @contextmanager
