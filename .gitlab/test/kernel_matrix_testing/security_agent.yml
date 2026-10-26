@@ -309,7 +309,12 @@ kmt_run_secagent_tests_arm64_docker:
   variables:
     TEST_COMPONENT: security-agent
 
+# when: always keeps the join waiting for every needed test job. With the
+# default on_success, one failed matrix member skips the join immediately, and
+# the cleanup job (when: always, needs these joins) can destroy the shared
+# metal instance while other tests are still running.
 .kmt_secagent_tests_join:
+  when: always
   stage: kernel_matrix_testing_cleanup
   rules: !reference [.on_security_agent_changes_or_manual]
   image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux$CI_IMAGE_LINUX_SUFFIX:$CI_IMAGE_LINUX
