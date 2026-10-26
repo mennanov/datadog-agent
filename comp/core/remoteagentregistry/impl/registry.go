@@ -50,6 +50,7 @@ type Provides struct {
 	Comp          remoteagentregistry.Component
 	FlareProvider flaretypes.Provider
 	Status        status.InformationProvider
+	ADPStatus     status.InformationProvider
 }
 
 // NewComponent creates a new remoteagent component
@@ -61,11 +62,15 @@ func NewComponent(reqs Requires) Provides {
 
 	registry := newRegistry(reqs)
 
-	return Provides{
+	provides := Provides{
 		Comp:          registry,
 		FlareProvider: flaretypes.NewProvider(registry.fillFlare),
 		Status:        status.NewInformationProvider(remoteagentregistryStatus.GetProvider(registry)),
 	}
+	if reqs.Config.GetBool("data_plane.enabled") {
+		provides.ADPStatus = status.NewInformationProvider(remoteagentregistryStatus.GetADPForwarderProvider())
+	}
+	return provides
 }
 
 func newRegistry(reqs Requires) *remoteAgentRegistry {
