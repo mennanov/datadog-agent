@@ -6,7 +6,8 @@
 #include "maps.h"
 #include "rate_limiter.h"
 
-// has to be in sync with the userspace definition
+// has to be in sync with patternPrefixSize in
+// pkg/security/probe/kfilters/capabilities_linux.go. Checked by blockwatch.toml.
 #define PATTERN_PREFIX_SIZE 3
 
 static struct approver_stats_t * __attribute__((always_inline)) get_active_approver_stats(u64 event_type) {

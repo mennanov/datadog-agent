@@ -6,7 +6,10 @@
 #define TTY_NAME_LEN 64
 #define MAX_XATTR_NAME_LEN 200
 #define CHAR_TO_UINT32_BASE_10_MAX_LEN 11
-#define BASENAME_FILTER_SIZE 32 // has to be in sync with the userspace definition
+// Has to be in sync with BasenameFilterSize in
+// pkg/security/probe/kfilters/policy.go.
+// Checked by blockwatch.toml.
+#define BASENAME_FILTER_SIZE 32
 #define FSTYPE_LEN 16
 #define MAX_PATH_LEN 256
 #define REVISION_ARRAY_SIZE 4096
@@ -283,6 +286,8 @@ static __attribute__((always_inline)) u64 get_capabilities_monitoring_period() {
 #define CGROUP_SYSTEMD_SERVICE (1 << 8)
 #define CGROUP_SYSTEMD_SCOPE (1 << 8) + 1
 
+// Has to be in sync with samplingPressureCritical in
+// pkg/security/config/config.go. Checked by blockwatch.toml.
 #define SAMPLING_PRESSURE_CRITICAL 90
 
 #define ACTIVE_FLOWS_MAX_SIZE 128

@@ -16,7 +16,9 @@ import (
 )
 
 const (
-	patternPrefixSize = 3 // has to be in sync with the kernel side of the approvers
+	// patternPrefixSize has to be in sync with PATTERN_PREFIX_SIZE in
+	// pkg/security/ebpf/c/include/helpers/approvers.h. Checked by blockwatch.toml.
+	patternPrefixSize = 3
 	// minParentBasenameSize avoids registering a parent-basename approver on a very short directory name
 	// (e.g. "a"), which would match files in any same-named directory across the filesystem and make the
 	// kernel approver too coarse to filter anything useful.
