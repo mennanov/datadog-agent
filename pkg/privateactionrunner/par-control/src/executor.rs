@@ -20,6 +20,7 @@ use tonic::transport::Channel;
 /// Control<->executor protocol limit in bytes. Action inputs and outputs can
 /// approach 15 MiB, so 20 MiB leaves protobuf headroom while still bounding
 /// memory use. Keep this in sync with `maxMessageSize` in the Go executor.
+/// Checked by blockwatch.toml.
 const MAX_MESSAGE_SIZE: usize = 20 * 1024 * 1024;
 
 /// Executor health snapshot used to gate dispatch.
