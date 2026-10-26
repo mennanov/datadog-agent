@@ -521,6 +521,8 @@ github.com/elastic/go-seccomp-bpf v1.6.0 h1:NYduiYxRJ0ZkIyQVwlSskcqPPSg6ynu5pK0/
 github.com/elastic/go-seccomp-bpf v1.6.0/go.mod h1:5tFsTvH4NtWGfpjsOQD53H8HdVQ+zSZFRUDSGevC0Kc=
 github.com/elastic/lunes v0.2.2 h1:dZFEaebNg9l+mzvOQN6Nd/c9y6y8rUe3tBWsTgvM08U=
 github.com/elastic/lunes v0.2.2/go.mod h1:u3W/BdONWTrh0JjNZ21C907dDc+cUZttZrGa625nf2k=
+github.com/elastic/proxy-connect-dialer-go v0.1.1 h1:kmSFbqC+j6yVlxwPixI/7aTpdp+FH16Oaau1bcClpjI=
+github.com/elastic/proxy-connect-dialer-go v0.1.1/go.mod h1:YYlk9leuhkB2h7STwiNOGa1UkZWalY70jnIF8Ec3Sks=
 github.com/emicklei/go-restful/v3 v3.13.0 h1:C4Bl2xDndpU6nJ4bc1jXd+uTmYPVUwkD6bFY/oTyCes=
 github.com/emicklei/go-restful/v3 v3.13.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/envoyproxy/gateway v1.9.0 h1:PaOpud15v3kDCl3L5yc1TdYzggCMpRm1yRjNKmLkzHA=
@@ -1167,6 +1169,8 @@ github.com/onsi/ginkgo/v2 v2.33.1 h1:62XfWJbEIjPSCSDYrsCPP/SHcmH7O0M8ne8zfqQ2iz4
 github.com/onsi/ginkgo/v2 v2.33.1/go.mod h1:+aXOY+vzZ5mu2iI2HpTZUPmM//oQfsNFX6gU9kNcA44=
 github.com/onsi/gomega v1.44.0 h1:eAiGl3Pw5jz5GQdDff0BcxYpAX1JxW8xD7mFUuwNfZQ=
 github.com/onsi/gomega v1.44.0/go.mod h1:e/C2HwaZ1DhvjzXXuFhcR7hY7Sh9pl7MmoWKEjzwcdA=
+github.com/open-telemetry/opamp-go v0.24.0 h1:PLPZoCa9myOl2iUBVQYnAToi7Xa+MF0DF/XPcC3gFls=
+github.com/open-telemetry/opamp-go v0.24.0/go.mod h1:xgYySBY286Bei9/0gFH0X+l6h51fQnvZcLvglDQf9DI=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0 h1:KEubjj+bDxrDwCM+sVhqA+XaCKUwbJ/e+Exp2n/412I=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0/go.mod h1:pazSEiHq2CcZA9yLmlcqqH9mT7FqaOyR2K36LsfOcpU=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.162.0 h1:oGjiC/3EbvYtn44x8lKDD6sNUMxSrbeC630vUYTB1w0=
@@ -1193,6 +1197,10 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/hos
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/hostobserver v0.162.0/go.mod h1:WE3xQoYoL/nWie0/C7yD0rMv8ZYwM2J8LXAipB0BN2k=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/k8sobserver v0.162.0 h1:A628Vvs1Y9UKPzeantxtRL+qRKM4bug4cZwbKFAcfew=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/k8sobserver v0.162.0/go.mod h1:ZxmwXNCW+jX6tmf1yDcWJM3eDjxR/K6mo0KsbNovii0=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.162.0 h1:w3IKycLS6L4lkLFcpjcngSSJMlZaV5cwoUJt6y2bCOM=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.162.0/go.mod h1:WKwisFwtqU85MhQH6hGYmVBdKZqnX0f4O8gSJ9K+cZI=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.162.0 h1:bJtWOoD/X2EyEkwR9xpJM5Zpd5sPTyXk/l68RsyV3I4=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.162.0/go.mod h1:nqRrIpmQPJv4DoWadLYrOwRI8OlnLE0LkjFNtjG1lNM=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.162.0 h1:T3WZuoS2WwIKD4p/xs6H5mYqmSPiJsc1pWWggOmocmI=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.162.0/go.mod h1:FiRnoGvSFOzWLS8f9LTKMBZNMF3wAKO5L0DxBU+Ndy0=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.162.0 h1:lkSD8URVynwbhT4xxQya94MsXLGeU1mzjh0KmXcCS80=
