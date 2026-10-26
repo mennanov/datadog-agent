@@ -51,7 +51,8 @@ http_file(
     urls = ["https://raw.githubusercontent.com/python/cpython/9edaccc8916eda7baa78a0b774fa4a3b7563726f/Lib/test/certdata/distrusted.zip"],
 )
 
-# Python dependencies for Windows
+# Python dependencies for Windows. Keep in sync with python_externals in
+# deps/cpython.BUILD.bazel. Checked by blockwatch.toml.
 
 python_src_deps = {
     "bzip2": ("1.0.8", "12c17d15f99e27235529574a722fb484a4e8fdf2427cef53b1b68bdf07e404a9"),

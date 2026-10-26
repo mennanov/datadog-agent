@@ -11,7 +11,7 @@ env_vars(
     name = "agent_volatile",
     # Each variable needs a justification. Every time you use one, the
     # target using it is potentially uncachable.
-    # ⚠️ Keep in sync with the `--repo_env=` entries in .bazelrc
+    # ⚠️ Keep in sync with the `--repo_env=` entries in .bazelrc. Checked by blockwatch.toml.
     variables = [
         # Stamps pkg/version.{Commit,FullCommit}, only in builds that also set
         # PACKAGE_VERSION, so other CI jobs keep caching across commits.
@@ -469,7 +469,7 @@ register_toolchains(
 # Python dependencies
 # =========================================
 
-# Keep in sync with .python-version
+# Keep in sync with .python-version. Checked by blockwatch.toml.
 PYTHON_VERSION = "3.12"
 
 python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
