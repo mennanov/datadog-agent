@@ -41,39 +41,49 @@ FALLBACK_JOBS_DIR="$INSTALL_DIR/embedded/share/launchd"
 FALLBACK_JOBS="com.datadoghq.procmgr com.datadoghq.agent com.datadoghq.sysprobe com.datadoghq.data-plane"
 
 # install_fallback_launchdaemons installs and loads the Agent's stable LaunchDaemons without the
-# installer: copy, chown, chmod, enable, bootstrap, as versions before the installer did. A job
-# that is already loaded from exactly the shipped definition is left running. It is idempotent,
-# and every job is attempted even if an earlier one fails.
+# installer: copy, chown, chmod, enable, bootstrap, as versions before the installer did. Every job
+# is reloaded, even one already loaded from the shipped definition: it only runs after the installer
+# failed, which may have left a job on its way out of the domain. Every job is attempted even if an
+# earlier one fails; it returns non-zero if any of them is not loaded at the end.
 install_fallback_launchdaemons() {
+    failed=""
     for label in $FALLBACK_JOBS; do
         src="$FALLBACK_JOBS_DIR/$label.plist"
         dst="/Library/LaunchDaemons/$label.plist"
         if [ ! -f "$src" ] || [ -L "$src" ]; then
             echo "ERROR: $src is missing; cannot install the $label LaunchDaemon"
-            continue
-        fi
-        if launchctl print "system/$label" >/dev/null 2>&1 && cmp -s "$src" "$dst"; then
-            echo "# $label is already loaded from the expected definition"
+            failed="$failed $label"
             continue
         fi
         echo "# Installing $label as a system-wide LaunchDaemon (fallback)"
         launchctl bootout "system/$label" 2>/dev/null || true
         # bootout returns before the job has left the domain, and bootstrapping it before then fails.
         attempts=0
-        while [ $attempts -lt 10 ] && launchctl print "system/$label" >/dev/null 2>&1; do
+        while [ $attempts -lt 30 ] && launchctl print "system/$label" >/dev/null 2>&1; do
             sleep 1
             attempts=$((attempts + 1))
         done
+        if launchctl print "system/$label" >/dev/null 2>&1; then
+            echo "ERROR: $label is still loaded after bootout; not replacing its definition"
+            failed="$failed $label"
+            continue
+        fi
         rm -f "$dst"
         cp -f "$src" "$dst"
         chown root:wheel "$dst"
         chmod 644 "$dst"
         launchctl enable "system/$label" 2>/dev/null || true
         if ! launchctl bootstrap system "$dst" 2>&1; then
-            echo "WARNING: Failed to bootstrap $label."
+            echo "ERROR: Failed to bootstrap $label."
+            failed="$failed $label"
+            continue
         fi
         launchctl kickstart "system/$label" 2>/dev/null || true
     done
+    if [ -n "$failed" ]; then
+        echo "ERROR: Could not install these LaunchDaemons:$failed"
+        return 1
+    fi
 }
 
 echo "# State at the beginning"

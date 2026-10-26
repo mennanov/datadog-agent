@@ -185,6 +185,16 @@ if [ -e "$CONF_DIR/datadog.yaml" ]; then
     echo "# Existing installation detected"
     datadog-agent version || true
 
+    # The installer daemon, from builds that ran one, goes first and is waited for: while it runs
+    # it can start the detached processes killed below.
+    launchctl bootout system/com.datadoghq.installer 2>/dev/null || true
+    launchctl bootout system/com.datadoghq.installer-exp 2>/dev/null || true
+    attempts=0
+    while [ $attempts -lt 30 ] && { launchctl print system/com.datadoghq.installer >/dev/null 2>&1 || launchctl print system/com.datadoghq.installer-exp >/dev/null 2>&1; }; do
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
     # The detached processes a configuration experiment runs outside of any launchd job: the
     # watcher and the installer daemon hand-back. Either could otherwise swap jobs back in while
     # this upgrade replaces the binaries they run. Killed outright: whatever they leave half done is
@@ -197,11 +207,9 @@ if [ -e "$CONF_DIR/datadog.yaml" ]; then
     launchctl bootout system/com.datadoghq.sysprobe 2>/dev/null || true
     launchctl bootout system/com.datadoghq.data-plane 2>/dev/null || true
 
-    # The installer daemon and the experiment variants of all of the jobs. The -exp jobs only
-    # exist while a configuration experiment is running; booting them out here is what keeps an
-    # upgrade from leaving an Agent behind that reads etc-exp.
-    launchctl bootout system/com.datadoghq.installer 2>/dev/null || true
-    launchctl bootout system/com.datadoghq.installer-exp 2>/dev/null || true
+    # The experiment variants of the jobs only exist while a configuration experiment is running;
+    # booting them out here is what keeps an upgrade from leaving an Agent behind that reads
+    # etc-exp.
     launchctl bootout system/com.datadoghq.agent-exp 2>/dev/null || true
     launchctl bootout system/com.datadoghq.sysprobe-exp 2>/dev/null || true
     launchctl bootout system/com.datadoghq.data-plane-exp 2>/dev/null || true
