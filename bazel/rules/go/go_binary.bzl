@@ -40,7 +40,7 @@ _VERSION_PKG = _REPO + "/pkg/version"
 _DEFAULTPATHS_PKG = _REPO + "/pkg/util/defaultpaths"
 
 # rules_go ignores go.work, whose godebug directives `go build` turns into this
-# default. Keep in sync with go.work.
+# default. Keep in sync with go.work. Checked by blockwatch.toml.
 _GODEBUG_DEFAULT = "tlsmlkem=0"
 
 def dd_agent_go_binary(
