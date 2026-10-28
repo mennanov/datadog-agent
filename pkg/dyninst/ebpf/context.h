@@ -79,6 +79,7 @@ DEFINE_QUEUE(pointers, pointers_queue_item_t, 128);
 // allowed in a split-event-kind condition. condition_state is a uint16
 // storing 2 bits per leaf, so the cap is 8. Keep in sync with
 // maxConditionEntryLeaves in pkg/dyninst/irgen/irgen.go.
+// Checked by blockwatch.toml.
 #define MAX_CONDITION_ENTRY_LEAVES 8
 #define CONDITION_LEAF_IDX_MASK (MAX_CONDITION_ENTRY_LEAVES - 1)
 

@@ -5,6 +5,7 @@
 
 // Throttle mode controls when throttling is applied relative to condition evaluation.
 // To be kept in sync with the compiler.ThrottleMode constants.
+// Checked by blockwatch.toml.
 typedef enum throttle_mode {
   THROTTLE_AT_START = 0,          // Throttle before probe_run (default for unconditional non-return probes)
   THROTTLE_AFTER_COND_CHECK = 1,  // Throttle after condition evaluates to true
@@ -128,6 +129,7 @@ typedef enum event_kind {
 } event_kind_t;
 
 // To be kept in sync with the ir.NoReturnReason enum in the ir/program.go file.
+// Checked by blockwatch.toml.
 typedef enum no_return_reason {
   NO_RETURN_REASON_NONE = 0,
   NO_RETURN_REASON_RETURNS_DISABLED = 1,
@@ -262,6 +264,7 @@ typedef enum sm_opcode {
 // cmp_op_t identifies which comparison SM_OP_EXPR_CMP_BASE /
 // SM_OP_EXPR_CMP_STRING performs. Encoded as a single byte in the
 // instruction stream — values must stay in sync with ir.CmpOp.
+// Checked by blockwatch.toml.
 typedef enum cmp_op {
   CMP_EQ = 0,
   CMP_NE = 1,
@@ -274,7 +277,7 @@ typedef enum cmp_op {
 // cmp_kind_t tells SM_OP_EXPR_CMP_BASE how to interpret the bytes being
 // ordered. Equality and string compares ignore the kind. Encoded as a
 // single byte in the instruction stream — values must stay in sync with
-// ir.CmpKind.
+// ir.CmpKind. Checked by blockwatch.toml.
 typedef enum cmp_kind {
   CMP_KIND_UINT = 0,
   CMP_KIND_INT = 1,

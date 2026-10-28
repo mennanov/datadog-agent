@@ -9,7 +9,7 @@ package output
 
 // DropReason classifies the effect a ring-buffer drop had on userspace
 // buffered state. Values must be kept in sync with the drop_reason enum in
-// ../ebpf/framing.h.
+// ../ebpf/framing.h. Checked by blockwatch.toml.
 type DropReason uint8
 
 const (

@@ -17,7 +17,7 @@
 // Expression status values. Each expression gets EXPR_STATUS_BITS bits in the
 // expression status array at the start of event root data. Must stay in
 // sync with ir.ExprStatusBits / the ExprStatus* constants in
-// pkg/dyninst/ir/expression.go.
+// pkg/dyninst/ir/expression.go. Checked by blockwatch.toml.
 #define EXPR_STATUS_BITS      4
 #define EXPR_STATUS_ABSENT    0  // evaluation failed (unknown reason)
 #define EXPR_STATUS_PRESENT   1  // evaluation succeeded
@@ -34,6 +34,7 @@
 // condition reports the failure.
 //
 // Must stay in sync with ir.CollectionPredicateMaxIterations.
+// Checked by blockwatch.toml.
 #define COLLECTION_PREDICATE_MAX_ITERATIONS 4096
 
 // Maximum Swiss-map cursor-advance steps while looking for the next occupied
@@ -48,6 +49,7 @@
 // is defensive (we shouldn't see oversized values at runtime).
 //
 // Must stay in sync with ir.CollectionPredicateMaxElemBytes.
+// Checked by blockwatch.toml.
 #define COLLECTION_PREDICATE_MAX_ELEM_BYTES 256
 
 // expr_status_write writes a status value into the packed expression status

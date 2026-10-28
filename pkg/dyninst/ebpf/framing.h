@@ -9,7 +9,8 @@
 // If adding new structure, update ../output/framing_align_test.go to check that structure
 // memory layout.
 
-// The reason for a return call being omitted.
+// The reason for a return call being omitted. Kept in sync with
+// EventPairingExpectation in ../output/event.go. Checked by blockwatch.toml.
 typedef enum event_pairing_expectation {
   EVENT_PAIRING_EXPECTATION_NONE = 0,
   EVENT_PAIRING_ENTRY_PAIRING_EXPECTED = 1,
@@ -148,6 +149,9 @@ typedef struct di_data_item_header {
 //                       as a truncated panic-unwound capture. probe_id,
 //                       stack_byte_depth, last_seq and entry_ktime_ns are
 //                       not meaningful for this reason.
+//
+// Kept in sync with DropReason in ../output/drop_notification.go.
+// Checked by blockwatch.toml.
 typedef enum drop_reason {
   DROP_REASON_RETURN_LOST        = 1,
   DROP_REASON_PARTIAL_ENTRY      = 2,

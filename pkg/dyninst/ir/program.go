@@ -320,7 +320,7 @@ type InjectionPoint struct {
 }
 
 // This must be kept in sync with the no_return_reason enum in the ebpf/types.h
-// file.
+// file. Checked by blockwatch.toml.
 type NoReturnReason uint8
 
 const (

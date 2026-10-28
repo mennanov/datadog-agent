@@ -9,7 +9,8 @@ package ir
 
 // ExprStatus is the per-expression evaluation status stored in the
 // ExprStatusArray at the start of event root data. Each expression gets
-// ExprStatusBits bits.
+// ExprStatusBits bits. Must stay in sync with the EXPR_STATUS_* defines in
+// pkg/dyninst/ebpf/stack_machine.h. Checked by blockwatch.toml.
 type ExprStatus uint8
 
 const (
@@ -22,6 +23,7 @@ const (
 
 // ExprStatusBits is the number of bits per entry in the ExprStatusArray.
 // Must stay in sync with EXPR_STATUS_BITS in pkg/dyninst/ebpf/stack_machine.h.
+// Checked by blockwatch.toml.
 const ExprStatusBits = 4
 
 // Expression is a typed and validated set of operations for compilation
@@ -390,7 +392,7 @@ const (
 // result is flagged as an evaluation error.
 //
 // Must stay in sync with COLLECTION_PREDICATE_MAX_ITERATIONS in
-// pkg/dyninst/ebpf/stack_machine.h.
+// pkg/dyninst/ebpf/stack_machine.h. Checked by blockwatch.toml.
 const CollectionPredicateMaxIterations = 4096
 
 // CollectionPredicateMaxElemBytes is the per-iteration scratch budget for
@@ -401,7 +403,9 @@ const CollectionPredicateMaxIterations = 4096
 //
 // Must stay in sync with the upfront scratch reservation in
 // sm_slice_loop_begin / sm_swissmap_loop_begin
-// (`1 + CollectionPredicateMaxElemBytes + 16`).
+// (`1 + CollectionPredicateMaxElemBytes + 16`), and with
+// COLLECTION_PREDICATE_MAX_ELEM_BYTES in pkg/dyninst/ebpf/stack_machine.h.
+// Checked by blockwatch.toml.
 const CollectionPredicateMaxElemBytes = 256
 
 // ArrayLoopBeginOp begins iteration over a Go array. At entry, scratch at

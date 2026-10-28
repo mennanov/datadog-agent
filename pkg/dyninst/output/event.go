@@ -27,14 +27,14 @@ const (
 // than a silent skip. Userspace can use this constant to surface a
 // diagnostic when a probe's maxLength would be clamped at the BPF
 // boundary. Must be kept in sync with MAX_DATA_ITEM_SIZE in
-// pkg/dyninst/ebpf/scratch.h.
+// pkg/dyninst/ebpf/scratch.h. Checked by blockwatch.toml.
 const MaxDataItemSize = 8192
 
 // EventPairingExpectation returns the event pairing expectation.
 type EventPairingExpectation uint8
 
 // This must be kept in sync with the event_pairing_expectation enum in the
-// ebpf/framing.h file.
+// ebpf/framing.h file. Checked by blockwatch.toml.
 const (
 	EventPairingExpectationNone                  EventPairingExpectation = 0
 	EventPairingExpectationEntryPairingExpected  EventPairingExpectation = 1

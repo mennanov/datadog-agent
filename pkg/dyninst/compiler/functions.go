@@ -15,6 +15,7 @@ import (
 
 // ThrottleMode controls when throttling is applied relative to condition evaluation.
 // Must be kept in sync with throttle_mode_t in ebpf/types.h.
+// Checked by blockwatch.toml.
 type ThrottleMode int8
 
 const (
