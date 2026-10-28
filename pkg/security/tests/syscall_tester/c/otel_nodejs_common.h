@@ -40,7 +40,8 @@
 #define OTEL_NODEJS_TAG(ptr) ((uint64_t)(uintptr_t)(ptr) | 1)
 #define OTEL_NODEJS_SMI(value) ((uint64_t)((int64_t)(value)) << 32)
 
-// kept in sync with OTEL_NODEJS_MAX_CHAIN in helpers/span_nodejs.h
+// kept in sync with OTEL_NODEJS_MAX_CHAIN in helpers/span_nodejs.h.
+// Checked by blockwatch.toml.
 #define OTEL_NODEJS_MAX_CHAIN 4
 
 // sized so the entry_deep case below can chain MAX_CHAIN decoys plus the real

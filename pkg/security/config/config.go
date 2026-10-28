@@ -31,7 +31,8 @@ const (
 	ADMinMaxDumSize = 100
 
 	// samplingPressureCritical mirrors SAMPLING_PRESSURE_CRITICAL in
-	// pkg/security/ebpf/c/include/constants/custom.h and must be kept in sync with it.
+	// pkg/security/ebpf/c/include/constants/custom.h and must be kept in sync with it
+	// (checked by blockwatch.toml).
 	// It is the exclusive upper bound for the per-event sampling thresholds: at or above
 	// it the critical check fires first, so the rate limiter band would never be reached.
 	samplingPressureCritical = 90

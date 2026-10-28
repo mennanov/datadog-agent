@@ -20,7 +20,8 @@ const (
 	PolicyModeAccept
 	PolicyModeDeny
 
-	// need to be aligned with the kernel size
+	// need to be aligned with BASENAME_FILTER_SIZE in
+	// pkg/security/ebpf/c/include/constants/custom.h. Checked by blockwatch.toml.
 	BasenameFilterSize = 32 // including \0
 )
 

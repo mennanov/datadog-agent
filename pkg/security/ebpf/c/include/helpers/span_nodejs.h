@@ -36,7 +36,9 @@
 // buckets than this means the walk landed on something else.
 #define OTEL_V8_OHM_MAX_BUCKETS 1024
 
-// How far the chain of one bucket is followed.
+// How far the chain of one bucket is followed. Kept in sync with
+// OTEL_NODEJS_MAX_CHAIN in tests/syscall_tester/c/otel_nodejs_common.h.
+// Checked by blockwatch.toml.
 #define OTEL_NODEJS_MAX_CHAIN 4
 
 static u64 __attribute__((always_inline)) otel_v8_untag(u64 value) {
