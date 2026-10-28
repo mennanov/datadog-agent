@@ -9,7 +9,7 @@
 
 // DNS_PORTS_MAX is the maximum number of distinct DNS ports the filter can
 // be configured to monitor. Must stay in sync with DNSPortsMax in
-// pkg/network/config/config.go
+// pkg/network/config/config.go. Checked by blockwatch.toml.
 // 8 covers every realistic configuration (53 + mDNS/LLMNR + the
 // 1053/8053/9053/10053 unprivileged CoreDNS family + a spare slot).
 #define DNS_PORTS_MAX 8

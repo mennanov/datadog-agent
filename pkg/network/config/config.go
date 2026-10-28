@@ -28,6 +28,7 @@ const (
 	defaultUDPStreamTimeoutSeconds = 120
 
 	// Must stay in sync with DNS_PORTS_MAX in pkg/network/ebpf/c/prebuilt/dns.c.
+	// Checked by blockwatch.toml.
 	DNSPortsMax = 8
 
 	// DarwinConnectionTracerEbpfless selects the existing packet-owned tracer.
