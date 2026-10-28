@@ -183,6 +183,7 @@ func submitHistogramBucket(checkID *C.char, metricName *C.char, value C.longlong
 
 // LogMsg routes a shared library check's log line through the agent logger.
 // Levels must stay in sync with the LogLevel enum in pkg/collector/sharedlibrary/rustchecks/core/src/aggregator.rs.
+// Checked by blockwatch.toml.
 // Not named LogMessage to avoid a cgo symbol collision with pkg/collector/python's LogMessage export.
 //
 //export LogMsg
