@@ -35,7 +35,7 @@ import (
 // maxMessageSize is the control<->executor protocol limit in bytes. Action
 // inputs and outputs can approach 15 MiB, so 20 MiB leaves protobuf headroom
 // while still bounding memory use. Keep this in sync with MAX_MESSAGE_SIZE in
-// par-control's executor client.
+// par-control's executor client. Checked by blockwatch.toml.
 const maxMessageSize = 20 * 1024 * 1024
 
 type actionExecutor interface {
