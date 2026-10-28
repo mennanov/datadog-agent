@@ -9,6 +9,7 @@ package logonduration
 
 /*
 // Keep in sync with https://docs.datadoghq.com/agent/supported_platforms/?tab=macos
+// and --macos_minimum_os in .bazelrc. Checked by blockwatch.toml.
 #cgo CFLAGS: -x objective-c -mmacosx-version-min=12.0
 #cgo LDFLAGS: -framework Foundation -framework OSLog
 

@@ -4,7 +4,7 @@
 // Copyright 2026-present Datadog, Inc.
 
 /// Keep in sync with MSI `ConfigureUserCustomActions.AgentPasswordPrivateDataKey`
-/// and fleet `agentPasswordPrivateDataKey`.
+/// and fleet `agentPasswordPrivateDataKey`. Checked by blockwatch.toml.
 pub(crate) const INSTALLER_AGENT_PASSWORD_LSA_KEY: &str = "L$datadog_ddagentuser_password";
 
 #[cfg(not(test))]
