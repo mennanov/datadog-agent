@@ -26,6 +26,121 @@ target = 'pkg/dyninst/output/event.go#/MaxDataItemSize'
 name = 'max-data-item-size'
 same-as = 'pkg/dyninst/ebpf/scratch.h#/MAX_DATA_ITEM_SIZE'
 
+# MAX_DATA_ITEM_SIZE is the largest entry of SIZE_LIST: its last line, the only one without a `\`.
+[[block]]
+target = 'pkg/dyninst/ebpf/scratch.h#/SIZE_LIST'
+name = 'size-list-largest'
+same-as-pattern = '^X\((?P<value>\d+)\)$'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/scratch.h#/MAX_DATA_ITEM_SIZE'
+name = 'max-data-item-size'
+same-as = 'pkg/dyninst/ebpf/scratch.h:size-list-largest'
+
+# Enums written by hand in both C and Go. Names compare by their words, so
+# NO_RETURN_REASON_LINE_PROBE matches NoReturnReasonLineProbe. A Go const group
+# has no symbol of its own, so the Go side is found by a pattern.
+[[block]]
+target = 'pkg/dyninst/ebpf/types.h#/throttle_mode_t'
+name = 'throttle-mode'
+same-as-pattern = '^THROTTLE_(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/compiler/functions.go'
+target-pattern = '(?s)type ThrottleMode int8\n\nconst \((?P<value>.*?)\n\)'
+name = 'throttle-mode'
+same-as = 'pkg/dyninst/ebpf/types.h:throttle-mode'
+same-as-pattern = '^Throttle(?P<name>\w+)\s+ThrottleMode\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/types.h#/no_return_reason_t'
+name = 'no-return-reason'
+same-as-pattern = '^NO_RETURN_REASON_(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/ir/program.go'
+target-pattern = '(?s)type NoReturnReason uint8\n\nconst \((?P<value>.*?)\n\)'
+name = 'no-return-reason'
+same-as = 'pkg/dyninst/ebpf/types.h:no-return-reason'
+same-as-pattern = '^NoReturnReason(?P<name>\w+)\s+NoReturnReason\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/framing.h#/drop_reason_t'
+name = 'drop-reason'
+same-as-pattern = '^DROP_REASON_(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/output/drop_notification.go'
+target-pattern = '(?s)type DropReason uint8\n\nconst \((?P<value>.*?)\n\)'
+name = 'drop-reason'
+same-as = 'pkg/dyninst/ebpf/framing.h:drop-reason'
+same-as-pattern = '^DropReason(?P<name>\w+)\s+DropReason\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/framing.h#/event_pairing_expectation_t'
+name = 'event-pairing-expectation'
+same-as-pattern = '^EVENT_PAIRING_(?:EXPECTATION_)?(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/output/event.go'
+target-pattern = '(?s)type EventPairingExpectation uint8\n\n.*?const \((?P<value>.*?)\n\)'
+name = 'event-pairing-expectation'
+same-as = 'pkg/dyninst/ebpf/framing.h:event-pairing-expectation'
+same-as-pattern = '^EventPairingExpectation(?P<name>\w+)\s+EventPairingExpectation\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/types.h#/cmp_op_t'
+name = 'cmp-op'
+same-as-pattern = '^CMP_(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/ir/cmp_op.go'
+target-pattern = '(?s)type CmpOp uint8\n\nconst \((?P<value>.*?)\n\)'
+name = 'cmp-op'
+same-as = 'pkg/dyninst/ebpf/types.h:cmp-op'
+same-as-pattern = '^Cmp(?P<name>\w+)\s+CmpOp\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+[[block]]
+target = 'pkg/dyninst/ebpf/types.h#/cmp_kind_t'
+name = 'cmp-kind'
+same-as-pattern = '^CMP_KIND_(?P<name>\w+)\s*=\s*(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/ir/cmp_kind.go'
+target-pattern = '(?s)type CmpKind uint8\n\nconst \((?P<value>.*?)\n\)'
+name = 'cmp-kind'
+same-as = 'pkg/dyninst/ebpf/types.h:cmp-kind'
+same-as-pattern = '^CmpKind(?P<name>\w+)\s+CmpKind\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
+# The expression status codes are plain #defines after EXPR_STATUS_BITS, so a pattern takes the
+# lines that follow it.
+[[block]]
+target = 'pkg/dyninst/ebpf/stack_machine.h'
+target-pattern = '#define EXPR_STATUS_BITS\s+\d+\n(?P<value>(?:#define EXPR_STATUS_\w+[^\n]*\n)+)'
+name = 'expr-status'
+same-as-pattern = '^#define EXPR_STATUS_(?P<name>\w+)\s+(?P<value>\d+)\b'
+
+[[block]]
+target = 'pkg/dyninst/ir/expression.go'
+target-pattern = '(?s)type ExprStatus uint8\n\nconst \((?P<value>.*?)\n\)'
+name = 'expr-status'
+same-as = 'pkg/dyninst/ebpf/stack_machine.h:expr-status'
+same-as-pattern = '^ExprStatus(?P<name>\w+)\s+ExprStatus\s*=\s*(?P<value>\d+)\b'
+same-as-mode = 'sequence'
+same-as-format = 'name:identifier'
+
 # --- Network: the DNS port filter in eBPF has a fixed number of slots.
 [[block]]
 target = 'pkg/network/config/config.go#/DNSPortsMax'
@@ -42,6 +157,50 @@ same-as = 'pkg/security/ebpf/c/include/constants/custom.h#/BASENAME_FILTER_SIZE'
 target = 'pkg/security/tests/syscall_tester/c/otel_nodejs_common.h#/OTEL_NODEJS_MAX_CHAIN'
 name = 'otel-nodejs-max-chain'
 same-as = 'pkg/security/ebpf/c/include/helpers/span_nodejs.h#/OTEL_NODEJS_MAX_CHAIN'
+
+[[block]]
+target = 'pkg/security/probe/kfilters/capabilities_linux.go#/patternPrefixSize'
+name = 'pattern-prefix-size'
+same-as = 'pkg/security/ebpf/c/include/helpers/approvers.h#/PATTERN_PREFIX_SIZE'
+
+[[block]]
+target = 'pkg/security/config/config.go#/samplingPressureCritical'
+name = 'sampling-pressure-critical'
+same-as = 'pkg/security/ebpf/c/include/constants/custom.h#/SAMPLING_PRESSURE_CRITICAL'
+
+# --- Shared library checks: the Rust check SDK sends log levels as numbers the Go side maps back.
+# Only the numbers compare: Go calls 30 WARNING, Rust calls it Warn.
+[[block]]
+target = 'pkg/collector/sharedlibrary/rustchecks/core/src/aggregator.rs#/LogLevel'
+name = 'rust-check-log-levels'
+same-as-pattern = '^\w+ = (?P<value>\d+),$'
+
+[[block]]
+target = 'pkg/collector/aggregator/aggregator.go#/LogMsg'
+name = 'rust-check-log-levels'
+same-as = 'pkg/collector/sharedlibrary/rustchecks/core/src/aggregator.rs:rust-check-log-levels'
+same-as-pattern = '^case (?P<value>\d+):'
+
+# --- Agent Data Plane: the e2e suite waits for the metric the preflight probe sends.
+[[block]]
+target = 'test/new-e2e/tests/agent-data-plane/preflight-mode/preflightmode_common_test.go#/probeMetricName'
+name = 'adp-preflight-probe-metric'
+same-as = 'comp/dataplane/preflightmode/impl/report.go#/probeMetricName'
+
+# --- Windows: the LSA secret that holds the ddagentuser password. The MSI writes it, Go and Rust read it.
+[[block]]
+target = 'pkg/fleet/installer/packages/user/windows/user.go#/agentPasswordPrivateDataKey'
+name = 'lsa-password-key'
+same-as = 'pkg/procmgr/rust/src/platform/windows/installer_lsa_password.rs#/INSTALLER_AGENT_PASSWORD_LSA_KEY'
+same-as-pattern = '(?P<value>L\$\w+)'
+
+# C# has no symbols, and the MSI builds the name from two parts, so only the part after `L$` compares.
+[[block]]
+target = 'tools/windows/DatadogAgentInstaller/CustomActions/ConfigureUserCustomActions.cs'
+target-pattern = 'return \$"\{secretType\}(?P<value>\w+)"'
+name = 'lsa-password-key'
+same-as = 'pkg/procmgr/rust/src/platform/windows/installer_lsa_password.rs#/INSTALLER_AGENT_PASSWORD_LSA_KEY'
+same-as-pattern = '^(?:L\$)?(?P<value>\w+)$'
 
 # --- Private action runner: the Go executor and the Rust client share a message limit.
 # Values are compared as written, so `20 << 20` on one side fails even though it is the same number.
@@ -66,6 +225,61 @@ same-as = 'go.work:godebug-default'
 target = 'MODULE.bazel#/PYTHON_VERSION'
 name = 'python-version'
 same-as = '.python-version'
+
+# Bazel only passes the env vars listed in .bazelrc through to the agent_volatile repository rule.
+# A rule call has no symbol, and .bazelrc has no grammar, so both sides are found by patterns.
+[[block]]
+target = 'MODULE.bazel'
+target-pattern = '(?s)name = "agent_volatile",.*?variables = \[(?P<value>.*?)\n    \]'
+name = 'agent-volatile-env'
+same-as-pattern = '^"(?P<value>[A-Z_]+)",$'
+
+[[block]]
+target = '.bazelrc'
+name = 'agent-volatile-env'
+same-as = 'MODULE.bazel:agent-volatile-env'
+same-as-pattern = 'repo_env=(?P<value>[A-Z_]+) # Keep in sync with env_vars in MODULE.bazel'
+
+# The oldest macOS the Agent supports, as a major version.
+[[block]]
+target = '.bazelrc'
+target-pattern = '--macos_minimum_os=(?P<value>\d+)\.0'
+name = 'macos-minimum'
+
+[[block]]
+target = 'comp/core/gui/impl/systray/Package.swift'
+target-pattern = '\.macOS\(\.v(?P<value>\d+)\)'
+name = 'macos-minimum'
+same-as = '.bazelrc:macos-minimum'
+
+# The cgo flags sit in a comment above `import "C"`, which is not a symbol.
+[[block]]
+target = 'pkg/logonduration/timestamps_darwin.go'
+target-pattern = '-mmacosx-version-min=(?P<value>\d+)\.0'
+name = 'macos-minimum'
+same-as = '.bazelrc:macos-minimum'
+
+# --- Test tooling: a change under these paths rebuilds the fakeintake image, which needs a VERSION bump.
+# The directories must match the CI globs (`dir/**/*.go`) exactly. The CI list also holds files
+# the task doesn't need (VERSION, the job definitions), so only the task's files must appear there.
+[[block]]
+target = '.gitlab-ci.yml#/.fakeintake_server_paths/paths'
+name = 'fakeintake-server-paths'
+same-as-pattern = '^- (?P<value>test/fakeintake/[^*]+?)(\*\*/\*\.go)?$'
+
+# This pattern reads both sides: the quoted directories here, and only the `**/*.go` globs in CI.
+[[block]]
+target = 'tasks/fakeintake.py#/SERVER_PATH_PREFIXES'
+name = 'fakeintake-server-path-prefixes'
+same-as = '.gitlab-ci.yml#/.fakeintake_server_paths/paths'
+same-as-pattern = '^(?:- |")(?P<value>test/fakeintake/[^*"]+/)(?:\*\*/\*\.go|",)$'
+
+[[block]]
+target = 'tasks/fakeintake.py#/SERVER_FILES'
+name = 'fakeintake-server-files'
+same-as = '.gitlab-ci.yml:fakeintake-server-paths'
+same-as-pattern = '^"(?P<value>test/fakeintake/[^"]+)",$'
+same-as-mode = 'subset'
 
 # The Windows CPython build copies each dependency into a folder named after its version.
 [[block]]
