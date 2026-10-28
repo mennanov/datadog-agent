@@ -565,7 +565,9 @@ namespace Datadog.CustomActions
         }
 
         /// <summary>
-        /// Returns the name (key) of the secret used to store the Agent password in the LSA secret store
+        /// Returns the name (key) of the secret used to store the Agent password in the LSA secret store.
+        /// Keep in sync with agentPasswordPrivateDataKey in the fleet installer and
+        /// INSTALLER_AGENT_PASSWORD_LSA_KEY in dd-procmgr. Checked by blockwatch.toml.
         /// </summary>
         public static string AgentPasswordPrivateDataKey()
         {

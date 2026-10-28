@@ -130,6 +130,7 @@ func usernameHasExpectedFormat(userName string) error {
 
 func agentPasswordPrivateDataKey() string {
 	// Keep in sync with MSI ConfigureUserCustomActions.AgentPasswordPrivateDataKey
+	// and INSTALLER_AGENT_PASSWORD_LSA_KEY in dd-procmgr. Checked by blockwatch.toml.
 	return "L$datadog_ddagentuser_password"
 }
 
